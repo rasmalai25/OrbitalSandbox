@@ -1,0 +1,126 @@
+/* Toolbar — left-side body type selector */
+
+.toolbar {
+  position: absolute;
+  left: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  border-radius: var(--radius-xl);
+  min-width: 88px;
+  animation: slide-in-left 0.4s ease both;
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateY(-50%) translateX(-16px); }
+  to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+}
+
+.toolbar-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  margin-bottom: var(--space-1);
+}
+
+.toolbar-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 64px;
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-ui);
+}
+
+.toolbar-btn:hover {
+  background: var(--color-accent-dim);
+  border-color: var(--color-border);
+  color: var(--color-text);
+  transform: scale(1.05);
+}
+
+.toolbar-btn--active {
+  background: var(--color-accent-dim);
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  box-shadow: 0 0 12px rgba(122, 0, 255, 0.3);
+}
+
+.toolbar-btn--active .toolbar-emoji {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.toolbar-emoji {
+  font-size: 22px;
+  line-height: 1;
+  transition: transform var(--transition-fast);
+}
+
+.toolbar-btn:hover .toolbar-emoji {
+  transform: scale(1.15);
+}
+
+.toolbar-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.toolbar-active-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  box-shadow: 0 0 4px var(--color-accent-soft);
+}
+
+.toolbar-divider {
+  width: 40px;
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-1) 0;
+}
+
+.toolbar-shortcut-hint {
+  font-size: 9px;
+  color: var(--color-text-dim);
+  text-align: center;
+  line-height: 1.4;
+  max-width: 70px;
+}
+
+/* ── Observer state — toolbar is dimmed, interactions disabled ── */
+.toolbar--observer {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: saturate(0.3);
+}
+
+.toolbar-observer-note {
+  font-size: 9px;
+  color: var(--color-accent-soft);
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+

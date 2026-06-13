@@ -1,0 +1,126 @@
+/* components/PresetMenu.css — Phase 7 */
+
+.preset-menu {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(var(--space-4) + 48px + 36px + var(--space-2)); /* below HUD row + toggle bar */
+  z-index: 80;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding-bottom: var(--space-2);
+  animation: fade-in-down 0.2s ease both;
+}
+
+/* Custom scrollbar inside panel */
+.preset-menu::-webkit-scrollbar { width: 4px; }
+.preset-menu::-webkit-scrollbar-track { background: transparent; }
+.preset-menu::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+
+.preset-menu__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.preset-menu__close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  line-height: 1;
+  transition: color var(--transition-fast);
+}
+.preset-menu__close:hover { color: var(--color-text); }
+
+.preset-card {
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  backdrop-filter: blur(12px);
+  text-align: left;
+  width: 100%;
+}
+
+.preset-card:hover {
+  border-color: var(--color-accent-soft);
+  box-shadow: 0 0 12px rgba(122, 0, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.preset-card__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.preset-card__emoji {
+  font-size: 15px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.preset-card__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  font-family: var(--font-display);
+}
+
+.preset-card__desc {
+  font-size: 10px;
+  color: var(--color-text-dim);
+  line-height: 1.3;
+  padding-left: 23px; /* indent under emoji */
+}
+
+/* Challenges section */
+.preset-menu__divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-1) 0;
+  flex-shrink: 0;
+}
+
+.preset-menu__section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.preset-card--challenge {
+  border-color: rgba(255, 180, 0, 0.2);
+}
+.preset-card--challenge:hover {
+  border-color: rgba(255, 180, 0, 0.6);
+  box-shadow: 0 0 12px rgba(255, 180, 0, 0.15);
+  transform: translateY(-1px);
+}

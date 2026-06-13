@@ -1,0 +1,38 @@
+/* EnergyDashboard — bottom-left live energy graph */
+
+.energy-dashboard {
+  position: absolute;
+  bottom: 90px;     /* sits above the playback bar */
+  left: var(--space-4);
+  z-index: 50;
+  width: 240px;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  border-radius: var(--radius-lg);
+  animation: slide-in-left 0.4s ease both;
+}
+
+.ed-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.ed-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.ed-unit {
+  font-size: 8px;
+  color: var(--color-text-dim);
+  font-family: var(--font-display);
+}
+
+.ed-chart {
+  height: 80px;
+  position: relative;
+}

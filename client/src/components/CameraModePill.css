@@ -1,0 +1,53 @@
+/* CameraModePill — top HUD camera mode indicator */
+
+.camera-mode-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  background: rgba(10, 12, 20, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--color-text-muted);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  transition: all var(--transition-fast);
+}
+
+.camera-mode-pill:hover {
+  border-color: rgba(167, 139, 250, 0.4);
+  color: var(--color-text);
+  box-shadow: 0 0 14px rgba(124, 58, 237, 0.25);
+}
+
+/* Mode-specific accent colours */
+.camera-mode-pill--com {
+  border-color: rgba(74, 158, 255, 0.3);
+  color: #7ab8ff;
+}
+.camera-mode-pill--largest {
+  border-color: rgba(255, 215, 0, 0.3);
+  color: #ffd966;
+}
+.camera-mode-pill--follow {
+  border-color: rgba(0, 230, 118, 0.35);
+  color: #00e676;
+  animation: follow-pulse 2.5s ease-in-out infinite;
+}
+.camera-mode-pill--free {
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--color-text-muted);
+}
+
+@keyframes follow-pulse {
+  0%, 100% { box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+  50%       { box-shadow: 0 0 14px rgba(0,230,118,0.3); }
+}

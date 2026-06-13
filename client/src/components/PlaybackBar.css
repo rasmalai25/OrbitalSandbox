@@ -1,0 +1,223 @@
+/* PlaybackBar — bottom-center simulation control strip */
+
+.playback-bar {
+  position: absolute;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-xl);
+  white-space: nowrap;
+  animation: slide-in-up 0.4s ease both;
+  min-width: min(700px, 90vw);
+  background: rgba(8, 10, 18, 0.82);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.6),
+    0 0 0 1px rgba(255,255,255,0.03) inset;
+}
+
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Play/Pause button ──────────────────────────────────── */
+.pb-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-accent-dim);
+  color: var(--color-text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.pb-btn--primary {
+  width: 44px;
+  height: 44px;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 12px rgba(122,0,255,0.3);
+}
+
+.pb-btn:hover {
+  background: rgba(122,0,255,0.3);
+  border-color: var(--color-accent-soft);
+  box-shadow: var(--glow-accent);
+  transform: scale(1.08);
+}
+
+.pb-btn--play  { color: var(--color-green); }
+.pb-btn--pause { color: var(--color-text); }
+
+/* ── Timeline / Scrub ───────────────────────────────────── */
+.pb-timeline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.pb-time {
+  font-size: 11px;
+  font-family: var(--font-display);
+  color: var(--color-text-muted);
+  min-width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.pb-scrub-track {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+
+.pb-scrub {
+  position: absolute;
+  width: 100%;
+  height: 20px;          /* full click/drag target height */
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Track — filled left of thumb via --fill, grey on the right */
+.pb-scrub::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    #a78bfa 0%,
+    #a78bfa var(--fill, 0%),
+    rgba(255,255,255,0.1) var(--fill, 0%),
+    rgba(255,255,255,0.1) 100%
+  );
+  box-shadow: 0 0 8px rgba(124,58,237,0.4);
+}
+
+.pb-scrub::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+  margin-top: 0;         /* Firefox centers track automatically */
+}
+
+.pb-scrub::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-accent-soft);
+  box-shadow: 0 0 6px rgba(122,0,255,0.25);
+}
+
+.pb-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;      /* centers 14px thumb on 4px track: -(14-4)/2 */
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--color-accent-soft);
+  box-shadow: 0 0 8px var(--color-accent);
+  cursor: grab;
+  transition: transform var(--transition-fast);
+}
+
+.pb-scrub::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.3);
+}
+
+/* ── Speed buttons ──────────────────────────────────────── */
+.pb-speed-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.pb-speed-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-dim);
+}
+
+.pb-speed-btns {
+  display: flex;
+  gap: 3px;
+}
+
+.pb-speed-btn {
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-family: var(--font-display);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.pb-speed-btn:hover {
+  border-color: var(--color-accent-soft);
+  color: var(--color-text);
+  background: var(--color-accent-dim);
+}
+
+.pb-speed-btn--active {
+  background: #7c3aed;
+  border-color: #a78bfa;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(124,58,237,0.5), 0 0 20px rgba(124,58,237,0.2);
+}
+
+/* ── State badge ────────────────────────────────────────── */
+.pb-state-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.pb-state-badge--running {
+  color: var(--color-green);
+  border-color: rgba(0,230,118,0.3);
+  background: rgba(0,230,118,0.08);
+  animation: pulse-live 2s infinite;
+}
+
+.pb-state-badge--paused {
+  color: var(--color-gold);
+  border-color: rgba(255,215,0,0.3);
+  background: rgba(255,215,0,0.08);
+  animation: none;
+}
+
+@keyframes pulse-live {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}

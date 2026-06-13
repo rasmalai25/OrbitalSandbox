@@ -1,0 +1,35 @@
+/* MiniMap — bottom-right overlay */
+
+.minimap-container {
+  position: absolute;
+  bottom: calc(var(--space-5) + 80px); /* above playback bar */
+  right: var(--space-4);
+  z-index: 50;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  animation: fade-in-right 0.3s ease both;
+}
+
+.minimap-label {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.minimap-canvas {
+  display: block;
+}
+
+@keyframes fade-in-right {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}

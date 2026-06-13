@@ -1,0 +1,134 @@
+/* components/ChallengePanel.css — Phase 7 */
+
+.challenge-panel {
+  position: absolute;
+  top: calc(var(--space-4) + 48px + 44px + var(--space-3)); /* below HUD + toggle bar */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 55;
+  width: 340px;
+  animation: fade-in-down 0.3s ease both;
+}
+
+.challenge-panel__card {
+  background: var(--color-bg-panel);
+  border: 1px solid rgba(255, 180, 0, 0.35);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 16px rgba(255,180,0,0.08);
+}
+
+.challenge-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.challenge-panel__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--color-gold);
+}
+
+.challenge-panel__close {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  transition: color var(--transition-fast);
+}
+.challenge-panel__close:hover { color: var(--color-text); }
+
+.challenge-panel__desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  margin-bottom: var(--space-3);
+}
+
+.challenge-panel__progress {
+  font-size: 11px;
+  font-family: var(--font-display);
+  color: var(--color-accent-soft);
+  font-weight: 600;
+  animation: pulse-text 2s ease infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── Victory overlay ──────────────────────────────────── */
+.victory-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 16, 0.85);
+  backdrop-filter: blur(8px);
+  animation: victory-in 0.4s ease both;
+  pointer-events: none;
+}
+
+@keyframes victory-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.victory-overlay__emoji {
+  font-size: 72px;
+  animation: victory-bounce 0.6s ease both;
+  margin-bottom: var(--space-4);
+}
+
+@keyframes victory-bounce {
+  0%   { transform: scale(0) rotate(-15deg); }
+  60%  { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.victory-overlay__title {
+  font-size: 36px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  background: linear-gradient(135deg, #FFD700, #a64dff, #00e5ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: var(--space-3);
+}
+
+.victory-overlay__sub {
+  font-size: 15px;
+  color: var(--color-text-muted);
+}
+
+/* Sparkle particles */
+.victory-overlay::before,
+.victory-overlay::after {
+  content: '✦ ✧ ✦ ✧ ✦';
+  position: absolute;
+  font-size: 24px;
+  letter-spacing: 16px;
+  color: rgba(255, 215, 0, 0.6);
+  animation: sparkle-float 3s ease infinite;
+}
+.victory-overlay::before { top: 15%; }
+.victory-overlay::after  { bottom: 15%; animation-delay: 1.5s; }
+
+@keyframes sparkle-float {
+  0%, 100% { opacity: 0.4; transform: translateY(0); }
+  50%       { opacity: 1;   transform: translateY(-8px); }
+}
