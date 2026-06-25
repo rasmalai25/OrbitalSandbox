@@ -38,20 +38,83 @@ export function triggerShake(intensity = 1) {
   };
 }
 
-// ── Stars (world-space, large extent so panning reveals more sky) ─────────────
+// ── World-space stars (tiled so density stays constant at any zoom) ──────────
+//
+// Stars are generated once for a single TILE × TILE block (world units), then
+// the renderer draws every tile that intersects the camera's FOV. This keeps
+// density constant when zooming in (the original fixed-extent field went
+// sparse fast — at zoom=5 only ~2 stars were on screen) without preallocating
+// a huge buffer.
+const STAR_TILE_SIZE = 1200;
 let _starCache = null;
 function getStarLayers(seed) {
   if (_starCache) return _starCache;
   const rng = mulberry32(seed);
-  const range = 6000;
-  const half  = range / 2;
+  const T = STAR_TILE_SIZE;
   const layers = [
-    Array.from({ length: 400 }, () => ({ x: rng()*range-half, y: rng()*range-half, r: rng()*0.5+0.15, a: rng()*0.4+0.1,  phase: rng()*Math.PI*2 })),
-    Array.from({ length: 150 }, () => ({ x: rng()*range-half, y: rng()*range-half, r: rng()*0.8+0.3,  a: rng()*0.5+0.2,  phase: rng()*Math.PI*2 })),
-    Array.from({ length: 50  }, () => ({ x: rng()*range-half, y: rng()*range-half, r: rng()*1.2+0.5,  a: rng()*0.55+0.3, phase: rng()*Math.PI*2 })),
+    Array.from({ length: 80 }, () => ({ x: rng()*T, y: rng()*T, r: rng()*0.5+0.15, a: rng()*0.4+0.1,  phase: rng()*Math.PI*2 })),
+    Array.from({ length: 30 }, () => ({ x: rng()*T, y: rng()*T, r: rng()*0.8+0.3,  a: rng()*0.5+0.2,  phase: rng()*Math.PI*2 })),
+    Array.from({ length: 10 }, () => ({ x: rng()*T, y: rng()*T, r: rng()*1.2+0.5,  a: rng()*0.55+0.3, phase: rng()*Math.PI*2 })),
   ];
   _starCache = layers;
   return layers;
+}
+
+// ── Screen-space parallax far layers (frontend §7.4) ─────────────────────────
+// Stars tile within a fixed cell and we modulo-wrap by the camera offset so
+// panning across the world reveals more "sky" without ever generating new
+// stars or growing the buffer. Dot size is constant (no zoom multiplier) so
+// they read as infinitely far away.
+const PARALLAX_LAYERS = [
+  { factor: 0.2, count: 90,  cell: 360, dotSize: 0.7, alpha: 0.35 },
+  { factor: 0.5, count: 60,  cell: 280, dotSize: 1.0, alpha: 0.55 },
+];
+let _parallaxCache = null;
+function getParallaxStars() {
+  if (_parallaxCache) return _parallaxCache;
+  const rng = mulberry32(20259);
+  _parallaxCache = PARALLAX_LAYERS.map(L => ({
+    ...L,
+    stars: Array.from({ length: L.count }, () => ({
+      x: rng() * L.cell,
+      y: rng() * L.cell,
+    })),
+  }));
+  return _parallaxCache;
+}
+
+/**
+ * Paint the two screen-space far parallax layers BEFORE the camera transform.
+ * Hidden when camera.zoom is below 0.3 so they don't fight world-space stars
+ * during heavy zoom-out.
+ */
+function drawParallaxLayers(ctx, camera, w, h) {
+  const layers = getParallaxStars();
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  for (const L of layers) {
+    // Negative parallax: faster motion than the camera = stars drift opposite
+    // to pan direction. Multiply by zoom so the apparent depth doesn't
+    // collapse on zoom-in.
+    const ox = (-camera.x * L.factor * camera.zoom) % L.cell;
+    const oy = (-camera.y * L.factor * camera.zoom) % L.cell;
+    ctx.globalAlpha = L.alpha;
+    // Tile across the visible canvas with a one-cell margin so wrapping is
+    // never visible at the edges.
+    for (let tileX = -L.cell; tileX < w + L.cell; tileX += L.cell) {
+      for (let tileY = -L.cell; tileY < h + L.cell; tileY += L.cell) {
+        for (const s of L.stars) {
+          const sx = tileX + ox + s.x;
+          const sy = tileY + oy + s.y;
+          if (sx < -2 || sy < -2 || sx > w + 2 || sy > h + 2) continue;
+          ctx.beginPath();
+          ctx.arc(sx, sy, L.dotSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+  ctx.restore();
 }
 
 // ── Nebula (screen-space, static) ────────────────────────────────────────────
@@ -91,6 +154,8 @@ export function render(canvas, engine, camera, opts = {}) {
     ghostPos          = null,
     ghostType         = null,
     trajectoryPath    = null,
+    partnerCursor     = null,
+    annotations       = [],
   } = opts;
 
   const ctx = canvas.getContext('2d');
@@ -102,6 +167,11 @@ export function render(canvas, engine, camera, opts = {}) {
 
   // 2. Screen-space nebula (no zoom effect)
   drawNebula(ctx, W, H);
+
+  // 2b. Screen-space parallax star layers (§7.4 far layers — drift with
+  //     camera pan, never zoom-scale, so they read as effectively infinite
+  //     distance behind the world-space nearest layer).
+  drawParallaxLayers(ctx, camera, W, H);
 
   // 3. Camera + shake transform
   let shakeX = 0, shakeY = 0;
@@ -116,10 +186,9 @@ export function render(canvas, engine, camera, opts = {}) {
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
 
-  // 4. World-space stars (size counter-scaled so they stay visually constant)
-  if (camera.zoom >= 0.3) {
-    drawStarfieldWorld(ctx, camera);
-  }
+  // 4. World-space stars (size counter-scaled so they stay visually constant).
+  //    Tiled around camera in drawStarfieldWorld so density holds at any zoom.
+  drawStarfieldWorld(ctx, camera, W, H);
 
   const bodies = Matter.Composite.allBodies(engine.world);
 
@@ -140,38 +209,142 @@ export function render(canvas, engine, camera, opts = {}) {
   renderSpaghettification(ctx);
   renderAndTickParticles(ctx);
 
+  // 9b. Annotations (world-space, zoom-aware stroke width)
+  if (annotations && annotations.length) renderAnnotations(ctx, annotations, camera);
+
   ctx.restore(); // ← everything below is SCREEN SPACE
 
   // 10. Ghost placement preview (screen-space, follows raw mouse)
   if (ghostPos && ghostType) drawGhostPreview(ctx, ghostPos.x, ghostPos.y, ghostType, camera);
+
+  // 11. Partner cursor — world-coords payload, projected to screen
+  if (partnerCursor) renderPartnerCursor(ctx, canvas, camera, partnerCursor);
+}
+
+// ── Annotations (world-space, fades over TTL) ────────────────────────────────
+
+function renderAnnotations(ctx, annotations, camera) {
+  const iz  = 1 / camera.zoom;
+  const now = performance.now();
+
+  ctx.save();
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+
+  for (const ann of annotations) {
+    const pts = ann.points;
+    if (!pts || pts.length < 2) continue;
+    const age   = now - (ann.createdAt || 0);
+    const ttl   = ann.ttl || 5000;
+    const alpha = Math.max(0, 1 - age / ttl);
+    if (alpha <= 0) continue;
+
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = ann.color || '#ff8c00';
+    ctx.lineWidth   = 2.5 * iz;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+// ── Partner cursor (screen-space dot with name label) ───────────────────────
+
+function renderPartnerCursor(ctx, canvas, camera, cursor) {
+  // Partner's payload is world coords — project to canvas-pixel screen space
+  const cx = canvas.width  / 2;
+  const cy = canvas.height / 2;
+  const sx = (cursor.x - camera.x) * camera.zoom + cx;
+  const sy = (cursor.y - camera.y) * camera.zoom + cy;
+
+  ctx.save();
+
+  // Outer pulsing glow
+  const t = performance.now() * 0.004;
+  const pulse = 0.55 + 0.45 * Math.sin(t);
+  const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, 16);
+  g.addColorStop(0, `rgba(255,140,0,${0.5 * pulse})`);
+  g.addColorStop(1, 'transparent');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(sx, sy, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner dot
+  ctx.beginPath();
+  ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#ff8c00';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Label
+  ctx.font = '500 11px Inter, sans-serif';
+  ctx.fillStyle = '#ff8c00';
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur  = 4;
+  ctx.fillText('Partner', sx + 9, sy - 6);
+  ctx.shadowBlur = 0;
+
+  ctx.restore();
 }
 
 // ── World-space starfield ─────────────────────────────────────────────────────
+//
+// Tiles the single base pattern across the camera's FOV. Counter-scales dot
+// radius by 1/zoom so stars appear visually constant in size at any zoom.
+// Tile count is capped at extreme zoom-out to keep the per-frame work bounded.
 
-function drawStarfieldWorld(ctx, camera) {
+const MAX_TILES_PER_FRAME = 400;
+
+function drawStarfieldWorld(ctx, camera, canvasW, canvasH) {
   const [layerA, layerB, layerC] = getStarLayers(1337);
   const now = performance.now() * 0.001;
-  const iz = 1 / camera.zoom; // counter-scale factor
+  const iz  = 1 / camera.zoom;
+  const T   = STAR_TILE_SIZE;
 
-  layerA.forEach(s => {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r * iz, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(200,210,255,${s.a.toFixed(3)})`;
-    ctx.fill();
-  });
-  layerB.forEach(s => {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r * iz, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(230,235,255,${s.a.toFixed(3)})`;
-    ctx.fill();
-  });
-  layerC.forEach(s => {
-    const flicker = s.a + 0.15 * Math.sin(now * 1.5 + s.phase);
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r * iz, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${Math.max(0, flicker).toFixed(3)})`;
-    ctx.fill();
-  });
+  // FOV in world units (half-extent around camera)
+  const halfW = (canvasW / 2) / camera.zoom;
+  const halfH = (canvasH / 2) / camera.zoom;
+
+  // Which tile indices cover the visible rect? Pad by one tile on each side
+  // so stars near the edge render even when their tile's origin is off-screen.
+  const startTX = Math.floor((camera.x - halfW) / T) - 1;
+  const endTX   = Math.floor((camera.x + halfW) / T) + 1;
+  const startTY = Math.floor((camera.y - halfH) / T) - 1;
+  const endTY   = Math.floor((camera.y + halfH) / T) + 1;
+
+  const tileCount = (endTX - startTX + 1) * (endTY - startTY + 1);
+  if (tileCount > MAX_TILES_PER_FRAME) return; // extreme zoom-out — skip rather than freeze
+
+  for (let ty = startTY; ty <= endTY; ty++) {
+    for (let tx = startTX; tx <= endTX; tx++) {
+      const ox = tx * T, oy = ty * T;
+      layerA.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(ox + s.x, oy + s.y, s.r * iz, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(200,210,255,${s.a.toFixed(3)})`;
+        ctx.fill();
+      });
+      layerB.forEach(s => {
+        ctx.beginPath();
+        ctx.arc(ox + s.x, oy + s.y, s.r * iz, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(230,235,255,${s.a.toFixed(3)})`;
+        ctx.fill();
+      });
+      layerC.forEach(s => {
+        const flicker = s.a + 0.15 * Math.sin(now * 1.5 + s.phase);
+        ctx.beginPath();
+        ctx.arc(ox + s.x, oy + s.y, s.r * iz, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${Math.max(0, flicker).toFixed(3)})`;
+        ctx.fill();
+      });
+    }
+  }
 }
 
 // ── Hover effects ─────────────────────────────────────────────────────────────
@@ -510,4 +683,14 @@ export function renderAndTickParticles(ctx) {
     ctx.fillStyle = `rgba(255,200,80,${p.life.toFixed(3)})`;
     ctx.fill();
   }
+}
+
+/**
+ * Wipe all in-flight visual effects. Call when the world is cleared so
+ * spaghettifying animations and particles don't reference removed bodies.
+ */
+export function clearAllVfx() {
+  spaghettifying.clear();
+  particles.length = 0;
+  _shake = { dx: 0, dy: 0, ttl: 0 };
 }

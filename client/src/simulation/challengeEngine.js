@@ -2,6 +2,7 @@
 // Phase 7 — two challenge scenarios with per-second polling for success.
 
 import Matter from 'matter-js';
+import { onCollision } from '../physics/collisionHandler.js';
 
 let _interval    = null;
 let _offListener = null;
@@ -84,11 +85,16 @@ export function startChallenge(id, opts) {
 
   const ctx = { stableSecs: 0, collisionFired: false, W: canvasWidth, H: canvasHeight };
 
-  // Collision listener for the controlled_collision challenge
+  // Collision listener for the controlled_collision challenge.
+  // Uses our custom pub/sub (Matter.js never fires collisionStart because
+  // bodies have collisionFilter mask 0x0000).
   if (id === 'controlled_collision') {
-    const handler = () => { ctx.collisionFired = true; };
-    Matter.Events.on(engine, 'collisionStart', handler);
-    _offListener = () => Matter.Events.off(engine, 'collisionStart', handler);
+    _offListener = onCollision(({ bodyA, bodyB }) => {
+      // Only count asteroid-asteroid collisions, not asteroid-star
+      if (bodyA.label === 'ASTEROID' && bodyB.label === 'ASTEROID') {
+        ctx.collisionFired = true;
+      }
+    });
   }
 
   _interval = setInterval(() => {

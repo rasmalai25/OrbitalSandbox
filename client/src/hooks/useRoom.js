@@ -1,33 +1,31 @@
 // hooks/useRoom.js
-// Phase 4 — manages room creation/joining and wires socket events to the engine.
+// Phase 4 — room creation/joining + socket→engine wiring.
+// Phase 8 — chat history, partner cursor, annotations, tug-of-war.
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getSocket } from '../socket/socketClient.js';
-import { applySyncedTick, applyRemoteBodyPlaced, applyRemoteBodyRemoved } from '../socket/syncEngine.js';
+import {
+  applySyncedTick, applyRemoteBodyPlaced, applyRemoteBodyRemoved,
+  applyRemoteBodyUpdated,
+} from '../socket/syncEngine.js';
 import { resumeLoop, pauseLoop, setSpeed } from '../simulation/SimulationLoop.js';
+import {
+  setPartnerCursor, addAnnotation, applyPartnerTug,
+} from '../simulation/SimulationLoop.js';
 import Matter from 'matter-js';
 
-/**
- * @param {React.RefObject} engineRef  - from useSimulation
- * @param {function} onBodyCountChange - increments/decrements local counter
- */
 export function useRoom(engineRef, onBodyCountChange) {
-  const [roomId, setRoomId] = useState(null);
-  const [role, setRole] = useState(null);    // 'host' | 'observer' | null
-  const [partnerOnline, setPartnerOnline] = useState(false);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [partnerCursor, setPartnerCursor] = useState(null); // { x, y }
-  const [hostSimTime, setHostSimTime] = useState(null);     // observer tracks host's simTime
+  const [roomId, setRoomId]                 = useState(null);
+  const [role, setRole]                     = useState(null);  // 'host' | 'observer' | null
+  const [partnerOnline, setPartnerOnline]   = useState(false);
+  const [chatMessages, setChatMessages]     = useState([]);
+  const [hostSimTime, setHostSimTime]       = useState(null);
   const tickFrameRef = useRef(0);
 
-  // ── Live ref so socket handlers always see the current role ─
   const roleRef = useRef(role);
   useEffect(() => { roleRef.current = role; }, [role]);
 
   // ── Wire socket events once on mount ─────────────────────
-  // Using roleRef.current inside handlers prevents stale-closure bugs
-  // (previously, role was captured at effect-registration time, so
-  //  sim_tick would still see role=null after the observer joined).
   useEffect(() => {
     const socket = getSocket();
 
@@ -37,7 +35,6 @@ export function useRoom(engineRef, onBodyCountChange) {
       setPartnerCursor(null);
     });
 
-    // Observer applies host ticks; host skips (it IS the source of truth).
     socket.on('sim_tick', ({ bodies, simTime }) => {
       if (roleRef.current === 'host') return;
       const engine = engineRef.current;
@@ -46,13 +43,17 @@ export function useRoom(engineRef, onBodyCountChange) {
       if (simTime != null) setHostSimTime(simTime);
     });
 
-    // BOTH host AND observer receive body_placed from the other person.
-    // Server uses socket.to() so you never receive your own emission.
     socket.on('body_placed', (bodyData) => {
       const engine = engineRef.current;
       if (!engine) return;
       applyRemoteBodyPlaced(engine, bodyData);
       onBodyCountChange?.(prev => prev + 1);
+    });
+
+    socket.on('body_updated', (update) => {
+      const engine = engineRef.current;
+      if (!engine) return;
+      applyRemoteBodyUpdated(engine, update);
     });
 
     socket.on('body_removed', ({ bodyId }) => {
@@ -62,29 +63,58 @@ export function useRoom(engineRef, onBodyCountChange) {
       onBodyCountChange?.(prev => Math.max(0, prev - 1));
     });
 
-    // Observer mirrors host sim_control; host ignores incoming controls.
     socket.on('sim_control', ({ action, speed }) => {
       if (roleRef.current === 'host') return;
-      if (action === 'pause') pauseLoop();
-      if (action === 'resume') resumeLoop();
+      if (action === 'pause')    pauseLoop();
+      if (action === 'resume')   resumeLoop();
       if (action === 'setSpeed') setSpeed(speed);
     });
 
-    socket.on('partner_cursor', ({ x, y }) => setPartnerCursor({ x, y }));
-    socket.on('chat_message', (msg) => setChatMessages(prev => [...prev, msg]));
+    socket.on('partner_cursor', ({ x, y }) => {
+      // World-space coords (camera doc §socket-sync). Renderer projects to screen.
+      setPartnerCursor({ x, y });
+    });
+
+    socket.on('chat_message', (msg) => {
+      setChatMessages(prev => [...prev, msg]);
+    });
+
+    socket.on('annotation_draw', (annotation) => {
+      addAnnotation(annotation);
+    });
+
+    socket.on('tug_of_war', ({ bodyId, force, fromId }) => {
+      applyPartnerTug({ bodyId, force, fromId });
+    });
 
     return () => {
       socket.off('partner_joined');
       socket.off('partner_disconnected');
       socket.off('body_placed');
+      socket.off('body_updated');
       socket.off('sim_tick');
       socket.off('body_removed');
       socket.off('sim_control');
       socket.off('partner_cursor');
       socket.off('chat_message');
+      socket.off('annotation_draw');
+      socket.off('tug_of_war');
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // mount-only — role read via roleRef, engineRef is a stable ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Adopt a room that was created/joined on a prior screen ────────
+  // Frontend §1: when SimulationScreen mounts after MP_SELECT/LOBBY, the
+  // socket is still in the room on the server but the React state has
+  // reset (the hook just remounted). Re-emitting create_room/join_room
+  // would either fail or assign the wrong role. adoptRoom restores the
+  // React state without any server traffic.
+  const adoptRoom = useCallback((id, r) => {
+    if (!id || !r) return;
+    setRoomId(id);
+    setRole(r);
+    setPartnerOnline(true); // we got here, both sides connected
+  }, []);
 
   // ── Create a new room ──────────────────────────────────
   const createRoom = useCallback(() => {
@@ -102,29 +132,46 @@ export function useRoom(engineRef, onBodyCountChange) {
       if (error) { console.error('[Room] Join error:', error); return; }
       setRoomId(id);
       setRole(r);
-      // Materialize existing bodies from host
+
       const engine = engineRef.current;
-      if (engine && initialState?.bodies) {
-        initialState.bodies.forEach(b => applyRemoteBodyPlaced(engine, b));
-        onBodyCountChange?.(initialState.bodies.length);
+      if (engine && initialState) {
+        // Apply existing bodies via the host's metadata; if a lastTick is
+        // present, also apply it so the observer sees current positions
+        // (not stale placement positions).
+        initialState.bodies?.forEach(b => applyRemoteBodyPlaced(engine, b));
+        if (initialState.lastTick?.bodies) {
+          applySyncedTick(engine, initialState.lastTick.bodies);
+        }
+        onBodyCountChange?.(initialState.bodies?.length || 0);
+      }
+
+      // Surface existing chat history so a late observer sees what was said
+      if (initialState?.chatHistory?.length) {
+        setChatMessages(initialState.chatHistory);
       }
     });
   }, [engineRef, onBodyCountChange]);
 
-  // ── Emit a body placement to partner ──────────────────
+  // ── Emit body placement (includes name so partner stays in sync) ─────
   const emitBodyPlaced = useCallback((body) => {
     if (!roomId) return;
-    const socket = getSocket();
-    socket.emit('body_placed', {
-      id: body.customData.id,
-      type: body.customData.type,
-      x: body.position.x,
-      y: body.position.y,
-      mass: body.mass,
+    getSocket().emit('body_placed', {
+      id:        body.customData.id,
+      type:      body.customData.type,
+      name:      body.customData.name,
+      x:         body.position.x,
+      y:         body.position.y,
+      mass:      body.mass,
       velocityX: body.velocity.x,
       velocityY: body.velocity.y,
-      ownerId: body.customData.ownerId,
+      ownerId:   body.customData.ownerId,
     });
+  }, [roomId]);
+
+  // ── Emit body update (rename, mass change, velocity tweak) ─────
+  const emitBodyUpdated = useCallback((update) => {
+    if (!roomId) return;
+    getSocket().emit('body_updated', update);
   }, [roomId]);
 
   // ── Emit sim_tick (host only, every 6 frames) ──────────
@@ -134,11 +181,11 @@ export function useRoom(engineRef, onBodyCountChange) {
     if (tickFrameRef.current % 6 !== 0) return;
 
     const bodies = Matter.Composite.allBodies(engine.world).map(b => ({
-      id: b.customData?.id,
-      x: b.position.x,
-      y: b.position.y,
-      vx: b.velocity.x,
-      vy: b.velocity.y,
+      id:    b.customData?.id,
+      x:     b.position.x,
+      y:     b.position.y,
+      vx:    b.velocity.x,
+      vy:    b.velocity.y,
       angle: b.angle,
     }));
 
@@ -151,31 +198,37 @@ export function useRoom(engineRef, onBodyCountChange) {
     getSocket().emit('sim_control', { action, speed });
   }, [role, roomId]);
 
-  // ── Send chat message ──────────────────────────────────
+  // ── Send chat ──────────────────────────────────────────
   const sendChat = useCallback((text) => {
-    if (!roomId) return;
-    getSocket().emit('chat_message', { text });
+    if (!roomId || !text?.trim()) return;
+    getSocket().emit('chat_message', { text: text.trim() });
   }, [roomId]);
 
-  // ── Emit cursor position ───────────────────────────────
+  // ── Emit cursor (world coords) ─────────────────────────
   const emitCursor = useCallback((x, y) => {
     if (!roomId) return;
     getSocket().emit('cursor_move', { x, y });
   }, [roomId]);
 
+  // ── Emit annotation stroke ─────────────────────────────
+  const emitAnnotation = useCallback((annotation) => {
+    if (!roomId) return;
+    getSocket().emit('annotation_draw', annotation);
+  }, [roomId]);
+
+  // ── Emit tug-of-war force vector ───────────────────────
+  const emitTug = useCallback((bodyId, force) => {
+    if (!roomId) return;
+    getSocket().emit('tug_of_war', { bodyId, force });
+  }, [roomId]);
+
   return {
-    roomId,
-    role,
-    partnerOnline,
-    chatMessages,
-    partnerCursor,
-    hostSimTime,
-    createRoom,
-    joinRoom,
-    emitBodyPlaced,
-    emitTickIfHost,
-    emitSimControl,
-    sendChat,
-    emitCursor,
+    roomId, role, partnerOnline,
+    chatMessages, hostSimTime,
+    createRoom, joinRoom, adoptRoom,
+    emitBodyPlaced, emitBodyUpdated,
+    emitTickIfHost, emitSimControl,
+    sendChat, emitCursor,
+    emitAnnotation, emitTug,
   };
 }

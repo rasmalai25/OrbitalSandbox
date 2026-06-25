@@ -4,32 +4,39 @@
 const TWO_PI = Math.PI * 2;
 
 /**
+ * Pick the body that exerts the strongest gravitational pull on `b`.
+ * F ∝ m_other / r² — this picks the right attractor whether b is a
+ * planet near a star (star wins) or a moon near a planet (planet wins,
+ * because the much closer planet's 1/r² beats the distant star's mass).
+ */
+function dominantAttractor(b, bodies) {
+  let best = null;
+  let bestForce = 0;
+  for (let i = 0; i < bodies.length; i++) {
+    const o = bodies[i];
+    if (o === b) continue;
+    const dx = o.position.x - b.position.x;
+    const dy = o.position.y - b.position.y;
+    const distSq = Math.max(dx * dx + dy * dy, 1);
+    const f = o.mass / distSq;
+    if (f > bestForce) { bestForce = f; best = o; }
+  }
+  return best;
+}
+
+/**
  * Called every tick. Mutates body.customData in place.
  * @param {Array} bodies - all Matter.js bodies in world
  * @param {number} simTime - current sim tick count (for period calculation)
  */
 export function updateOrbitalPeriods(bodies, simTime) {
-  // Find the single most massive body as the global attractor (simple heuristic)
-  let globalAttractor = null;
-  let maxMass = 0;
-  bodies.forEach(b => {
-    if (b.mass > maxMass) { maxMass = b.mass; globalAttractor = b; }
-  });
-
   bodies.forEach(body => {
     const cd = body.customData;
     if (!cd) return;
     if (body.isStatic) return;
-    // Don't track the attractor against itself
-    if (body === globalAttractor) return;
 
-    // Find nearest massive body as local attractor
-    let attractor = null;
-    let maxAttrMass = 0;
-    bodies.forEach(other => {
-      if (other === body) return;
-      if (other.mass > maxAttrMass) { maxAttrMass = other.mass; attractor = other; }
-    });
+    // Pick the body that pulls hardest on this one (force-weighted)
+    const attractor = dominantAttractor(body, bodies);
     if (!attractor) return;
 
     const dx = body.position.x - attractor.position.x;
@@ -64,13 +71,7 @@ export function updateOrbitalPeriods(bodies, simTime) {
  */
 export function classifyOrbit(body, bodies) {
   if (body.isStatic) return 'pinned';
-
-  let attractor = null;
-  let maxMass = 0;
-  bodies.forEach(other => {
-    if (other === body) return;
-    if (other.mass > maxMass) { maxMass = other.mass; attractor = other; }
-  });
+  const attractor = dominantAttractor(body, bodies);
   if (!attractor) return 'free';
 
   const dx = body.position.x - attractor.position.x;

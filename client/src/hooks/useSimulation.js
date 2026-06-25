@@ -1,19 +1,17 @@
 // hooks/useSimulation.js
-// Phase 3 — engine lifecycle, slow-motion proximity trigger, black hole capture.
+// Phase 3 — engine lifecycle. Collision detection + black hole captures
+// run from SimulationLoop directly (see collisionHandler.js).
 
 import { useEffect, useRef, useCallback } from 'react';
 import { initEngine } from '../physics/engineSetup.js';
 import {
-  startLoop, pauseLoop, resumeLoop, setSpeed, isRunning, triggerSlowMotion,
+  startLoop, pauseLoop, resumeLoop, setSpeed, isRunning,
+  resetTickCounter,
 } from '../simulation/SimulationLoop.js';
-import { registerCollisionHandlers, checkBlackHoleCaptures } from '../physics/collisionHandler.js';
+import { clearCollisionState } from '../physics/collisionHandler.js';
 import { createBody } from '../physics/bodyFactory.js';
+import { clearAllVfx } from '../canvas/CanvasRenderer.js';
 import Matter from 'matter-js';
-
-// Minimum distance between body surfaces that triggers slow-motion (px)
-const CLOSE_APPROACH_THRESHOLD = 8;
-// Cooldown so we don't spam slow-mo every frame
-let slowMoCooldown = 0;
 
 export function useSimulation(canvasRef) {
   const engineRef = useRef(null);
@@ -35,41 +33,10 @@ export function useSimulation(canvasRef) {
     const engine = initEngine();
     engineRef.current = engine;
 
-    // Physical collisionStart won't fire (mask:0x0000) but keep handler for future
-    registerCollisionHandlers(engine, () => {});
-
-    // ── Per-tick logic ─────────────────────────────────
+    // Per-tick callback — currently just emits the host's sim_tick.
+    // Slow-mo + particles + screen shake are dispatched by checkCustomCollisions
+    // inside SimulationLoop, so this stays minimal.
     const onTick = (eng) => {
-      const bodies = Matter.Composite.allBodies(eng.world);
-
-      // Black hole captures
-      checkBlackHoleCaptures(eng, body => {
-        console.log('[Black hole] captured:', body.customData?.id);
-      });
-
-      // Close-approach slow-motion trigger
-      if (slowMoCooldown > 0) {
-        slowMoCooldown--;
-      } else {
-        const nonStatic = bodies.filter(b => !b.isStatic);
-        outer: for (let i = 0; i < nonStatic.length; i++) {
-          for (let j = i + 1; j < nonStatic.length; j++) {
-            const a = nonStatic[i];
-            const b = nonStatic[j];
-            const dx = b.position.x - a.position.x;
-            const dy = b.position.y - a.position.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const surfaceDist = dist - (a.circleRadius || 5) - (b.circleRadius || 5);
-            if (surfaceDist < CLOSE_APPROACH_THRESHOLD) {
-              triggerSlowMotion(2500);
-              slowMoCooldown = 200;
-              break outer;
-            }
-          }
-        }
-      }
-
-      // Phase 4: emit tick to partner (no-op if not in room)
       emitTickRef.current(eng);
     };
 
@@ -108,7 +75,11 @@ export function useSimulation(canvasRef) {
     // Flush engine's internal pair/broadphase caches so no stale
     // references can resurrect cleared bodies on the next tick
     Matter.Engine.clear(engine);
-    slowMoCooldown = 0;
+    // Drop any lingering VFX (spaghettification, particles, screen shake)
+    // and active collision pairs so the first re-collision fires cleanly
+    clearAllVfx();
+    clearCollisionState();
+    resetTickCounter();
   }, []);
 
   return {

@@ -21,6 +21,7 @@ export const EVENTS = {
   ANNOTATION_DRAW: 'annotation_draw',
   CHAT_MESSAGE: 'chat_message',
   CHAT_HISTORY: 'chat_history',
+  TUG_OF_WAR: 'tug_of_war',
 
   // --- Session Persistence ---
   SAVE_SESSION: 'save_session',

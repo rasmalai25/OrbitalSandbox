@@ -1,7 +1,8 @@
 // server/src/roomManager.js
-// Phase 4 — manages rooms and their state.
+// Phase 4 — manages rooms and their state. Phase 8 — chatHistory persistence
+// per room. Phase 9 — rooms now also carry a `lastTick` for late-join sync.
 
-const rooms = new Map(); // roomId -> { hostId, observerId, bodies, simRunning, simTime, chatHistory }
+const rooms = new Map(); // roomId -> { hostId, observerId, bodies, simRunning, simTime, chatHistory, lastTick }
 
 export function createRoom(roomId) {
   rooms.set(roomId, {
@@ -11,6 +12,7 @@ export function createRoom(roomId) {
     simRunning: false,
     simTime: 0,
     chatHistory: [],
+    lastTick: null,
   });
 }
 
@@ -38,12 +40,20 @@ export function getRoomBySocket(socketId) {
   return null;
 }
 
+/**
+ * Remove a socket from its room. If the room is empty afterward,
+ * delete the room entry from the map so long-running servers don't
+ * accumulate dead rooms.
+ */
 export function removeFromRoom(socketId) {
   const result = getRoomBySocket(socketId);
   if (!result) return;
-  const { room } = result;
+  const { roomId, room } = result;
   if (room.hostId === socketId) room.hostId = null;
   if (room.observerId === socketId) room.observerId = null;
+  if (!room.hostId && !room.observerId) {
+    rooms.delete(roomId);
+  }
 }
 
 export function getRoomCount() {

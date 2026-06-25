@@ -1,0 +1,76 @@
+/* screens/LobbyScreen.css */
+
+.lobby {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: radial-gradient(circle at 50% 50%, #0a0518 0%, #050010 80%);
+  color: #e8e0ff;
+}
+
+.lobby__title { margin: 0 0 8px; font-weight: 400; letter-spacing: 0.04em; }
+
+.lobby__orbit {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  border: 1px dashed rgba(181, 145, 255, 0.35);
+  border-radius: 50%;
+  animation: lobby-orbit-spin 5s linear infinite;
+}
+
+.lobby__dot {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: 50%;
+}
+
+.lobby__dot--host    { background: #b591ff; box-shadow: 0 0 12px #b591ff; }
+.lobby__dot--partner { background: rgba(255,255,255,0.18); transform: rotate(180deg) translateY(160px); transform-origin: center 88px; }
+
+@keyframes lobby-orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.lobby__code-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px 16px;
+  border-radius: 12px;
+}
+
+.lobby__code-label { color: #9c8fc7; }
+.lobby__code      { font-family: ui-monospace, monospace; font-size: 18px; color: #fff; }
+.lobby__copy {
+  padding: 4px 12px;
+  border: 1px solid rgba(181, 145, 255, 0.5);
+  background: transparent;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.lobby__copy:hover { background: rgba(181, 145, 255, 0.15); }
+
+.lobby__hint { color: #9c8fc7; margin: 0; }
+.lobby__back {
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.lobby__back:hover { color: #fff; border-color: rgba(255, 255, 255, 0.4); }

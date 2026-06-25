@@ -32,7 +32,7 @@ export function resetBodyCounters() {
  * @param {number} [opts.velocityY]  - initial Y velocity
  * @param {string} [opts.ownerId]    - socket id of placing user
  */
-export function createBody({ type = 'PLANET', x, y, mass, velocityX = 0, velocityY = 0, ownerId = 'local' }) {
+export function createBody({ type = 'PLANET', x, y, mass, velocityX = 0, velocityY = 0, ownerId = 'local', name }) {
   const config = BODY_TYPES[type];
   if (!config) throw new Error(`Unknown body type: ${type}`);
 
@@ -65,14 +65,16 @@ export function createBody({ type = 'PLANET', x, y, mass, velocityX = 0, velocit
   // Apply initial velocity (from the direction dial + speed slider)
   Matter.Body.setVelocity(body, { x: velocityX, y: velocityY });
 
-  // Attach metadata — Matter.js bodies can carry arbitrary custom properties
+  // Attach metadata — Matter.js bodies can carry arbitrary custom properties.
+  // If a name is supplied (remote body_placed payload from partner), use it
+  // verbatim so both clients agree. Otherwise auto-generate the next one.
   body.customData = {
     id:   nanoid(),
-    name: nextBodyName(type),  // e.g. "Planet-3" — editable via PropertyPanel
+    name: name || nextBodyName(type),
     type,
     ownerId,
-    trailPoints: [],          // filled by TrailManager in Phase 6
-    orbitalPeriodStart: null, // filled by orbitAnalyzer in Phase 2
+    trailPoints: [],
+    orbitalPeriodStart: null,
     lastAngle: null,
     fullOrbitsCompleted: 0,
   };

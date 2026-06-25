@@ -1,0 +1,106 @@
+/* screens/SelectScreens.css — shared by ModeSelect, SoloSelect, MultiplayerSelect */
+
+.select-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 32px;
+  background: radial-gradient(circle at 50% 30%, #0a0518 0%, #050010 80%);
+  color: #e8e0ff;
+}
+
+.select-screen__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #b591ff;
+}
+
+.select-screen__title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+
+.select-screen__cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 720px;
+  width: 100%;
+}
+
+.select-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 18px;
+  padding: 40px 24px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: transform 200ms ease, background 200ms ease, border-color 200ms ease;
+}
+.select-card:hover {
+  transform: translateY(-3px);
+  background: rgba(122, 0, 255, 0.12);
+  border-color: rgba(181, 145, 255, 0.4);
+}
+.select-card:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.select-card__emoji { font-size: 44px; }
+.select-card__title { font-size: 20px; letter-spacing: 0.04em; }
+.select-card__sub   { font-size: 13px; color: #9c8fc7; }
+
+.select-screen__back {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.select-screen__back:hover { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+
+.select-screen__join {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.select-screen__code-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(181, 145, 255, 0.4);
+  color: #fff;
+  font-family: ui-monospace, monospace;
+  font-size: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  width: 220px;
+}
+
+.select-screen__cta {
+  background: rgba(122, 0, 255, 0.25);
+  border: 1px solid rgba(181, 145, 255, 0.5);
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.select-screen__cta:hover    { background: rgba(122, 0, 255, 0.4); }
+.select-screen__cta:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.select-screen__error {
+  color: #ff8aa8;
+  margin: 0;
+}

@@ -7,12 +7,31 @@ import './PropertyPanel.css';
 
 const TWO_PI = Math.PI * 2;
 
-export default function PropertyPanel({ selectedType, onConfigChange }) {
+export default function PropertyPanel({ selectedType, onConfigChange, selectedBody, onRename }) {
   const config = BODY_TYPES[selectedType];
 
   const [mass, setMass] = useState(config.defaultMass);
   const [speed, setSpeed] = useState(0);
   const [angle, setAngle] = useState(0); // radians, 0 = right
+
+  // ── Rename state (camera doc C5) ──────────────────────
+  // Double-clicking the body name flips it into an editable input;
+  // Enter or blur commits; Escape cancels.
+  const [renaming, setRenaming]   = useState(false);
+  const [renameDraft, setRenameDraft] = useState('');
+
+  // Drop edit mode whenever selection changes
+  useEffect(() => {
+    setRenaming(false);
+    setRenameDraft(selectedBody?.name || '');
+  }, [selectedBody?.id]);
+
+  const commitRename = useCallback(() => {
+    if (renaming && renameDraft.trim() && renameDraft.trim() !== selectedBody?.name) {
+      onRename?.(renameDraft.trim());
+    }
+    setRenaming(false);
+  }, [renaming, renameDraft, selectedBody?.name, onRename]);
 
   // Sync defaults when body type changes
   useEffect(() => {
@@ -72,6 +91,41 @@ export default function PropertyPanel({ selectedType, onConfigChange }) {
   return (
     <aside className="property-panel glass-panel" aria-label="Body properties">
       <div className="pp-title">Properties</div>
+
+      {/* Selected body — rename (camera doc C5). Double-click name to edit;
+          Enter/blur commits, Escape cancels. Hidden when nothing is selected. */}
+      {selectedBody && (
+        <div className="pp-selected" style={{ marginBottom: 10 }}>
+          <div className="pp-label" style={{ marginBottom: 4 }}>Selected</div>
+          {renaming ? (
+            <input
+              autoFocus
+              className="pp-input"
+              value={renameDraft}
+              maxLength={32}
+              onChange={e => setRenameDraft(e.target.value)}
+              onBlur={commitRename}
+              onKeyDown={e => {
+                if (e.key === 'Enter')  { e.preventDefault(); commitRename(); }
+                if (e.key === 'Escape') { setRenaming(false); }
+              }}
+            />
+          ) : (
+            <div
+              className="pp-type-badge"
+              style={{ borderColor: BODY_TYPES[selectedBody.type]?.color || '#888', cursor: 'text' }}
+              title="Double-click to rename"
+              onDoubleClick={() => {
+                setRenameDraft(selectedBody.name || '');
+                setRenaming(true);
+              }}
+            >
+              <span>{BODY_TYPES[selectedBody.type]?.emoji || '◯'}</span>
+              <span>{selectedBody.name || '(unnamed)'}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Type indicator */}
       <div className="pp-type-badge" style={{ borderColor: config.color }}>

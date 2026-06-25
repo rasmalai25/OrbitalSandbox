@@ -6,8 +6,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import Matter from 'matter-js';
 import {
   pauseLoop, resumeLoop, setSpeed, getSpeed, isRunning as simIsRunning,
+  resetTickCounter,
 } from '../simulation/SimulationLoop.js';
 import { getCursor, getTotalWritten, rewindTo, clearHistory } from '../simulation/HistoryStore.js';
+import { clearCollisionState } from '../physics/collisionHandler.js';
+import { clearAllVfx } from '../canvas/CanvasRenderer.js';
 import { fitAll } from '../canvas/camera.js';
 import './PlaybackBar.css';
 
@@ -92,6 +95,9 @@ export default function PlaybackBar({ engineRef, onBodyCountChange, role, hostSi
       Matter.Engine.clear(engine);
     }
     clearHistory();
+    resetTickCounter();
+    clearCollisionState();
+    clearAllVfx();
     setCursor(0);
     setMaxCursor(0);
     resumeLoop();

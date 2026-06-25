@@ -1,0 +1,62 @@
+/* screens/LandingScreen.css */
+
+.landing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 50%, #0a0518 0%, #050010 70%, #000 100%);
+  color: #e8e0ff;
+  overflow: hidden;
+}
+
+/* Cheap CSS-only star field — three layered backgrounds with subtle drift.
+   This is the standalone landing star field per §3.1, NOT the parallax system. */
+.landing__stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, #fff 50%, transparent 100%),
+    radial-gradient(1px 1px at 80% 70%, #fff 50%, transparent 100%),
+    radial-gradient(1px 1px at 50% 50%, #cbb 50%, transparent 100%),
+    radial-gradient(1px 1px at 35% 80%, #fff 50%, transparent 100%),
+    radial-gradient(2px 2px at 65% 20%, #fff 50%, transparent 100%),
+    radial-gradient(1px 1px at 10% 60%, #cdc 50%, transparent 100%);
+  background-size: 200px 200px, 250px 250px, 180px 180px, 300px 300px, 220px 220px, 170px 170px;
+  opacity: 0.7;
+  animation: landing-drift 60s linear infinite;
+}
+
+@keyframes landing-drift {
+  from { background-position: 0 0, 0 0, 0 0, 0 0, 0 0, 0 0; }
+  to   { background-position: 200px 200px, -250px 250px, 180px -180px,
+                              -300px 300px, 220px -220px, 170px 170px; }
+}
+
+.landing__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.landing__logo  { color: #b591ff; }
+.landing__title { font-size: 56px; margin: 0; letter-spacing: 0.04em; }
+.landing__tagline { margin: 0 0 18px; color: #9c8fc7; }
+
+.landing__enter {
+  padding: 14px 56px;
+  font-size: 18px;
+  letter-spacing: 0.12em;
+  border-radius: 14px;
+  background: rgba(122, 0, 255, 0.18);
+  border: 1px solid rgba(181, 145, 255, 0.5);
+  color: #fff;
+  cursor: pointer;
+  transition: background 200ms ease, transform 100ms ease;
+}
+.landing__enter:hover  { background: rgba(122, 0, 255, 0.32); }
+.landing__enter:active { transform: scale(0.97); }

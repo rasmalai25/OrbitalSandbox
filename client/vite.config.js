@@ -11,6 +11,10 @@ export default defineConfig({
         ws: true,           // critical: enables WebSocket proxying
         changeOrigin: true,
       },
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
     },
   },
 });
